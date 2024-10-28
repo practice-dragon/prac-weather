@@ -1,9 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart';
+import 'package:prac/data/my_location.dart';
+import 'package:prac/data/network.dart';
+import 'package:prac/screens/weather_screen.dart';
+
+const apikey = "729fa35a524629fd0e3fcf937a538393";
 
 class Loading extends StatefulWidget {
   const Loading({Key? key}) : super(key: key);
@@ -13,49 +14,32 @@ class Loading extends StatefulWidget {
 }
 
 class _LoadingState extends State<Loading> {
+  late double latitude3;
+  late double longitude3;
+
   @override
   void initState() {
     super.initState();
     getLocation();
-    fetchData();
   }
 
   void getLocation() async {
-    try {
-      LocationPermission permission = await Geolocator.requestPermission();
-      Position position = await Geolocator.getCurrentPosition();
-      flutterToast(position.toString());
-      print("position");
-      print(position);
-    } catch (e) {
-      flutterToast('There was a problem with the internet connection');
+    MyLocation myLocation = MyLocation();
+    await myLocation.getMyCurrentLocation();
+    latitude3 = myLocation.latitude2;
+    longitude3 = myLocation.longitude2;
+    print(latitude3);
+    print(longitude3);
+
+    Network network = Network(
+        'https://api.openweathermap.org/data/2.5/weather?lat=$latitude3&lon=$longitude3&appid=$apikey&units=metric');
+    var weatherData = await network.getJsonData();
+    print(weatherData);
+    if (mounted) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) {
+        return WeatherScreen(parseWeatherData: weatherData);
+      }));
     }
-  }
-
-  void fetchData() async {
-    try {
-      Response response = await get(Uri.parse(
-          'https://samples.openweathermap.org/data/2.5/weather?q=London&appid=b1b15e88fa797225412429c1c50c122a1'));
-      if (response.statusCode == 200) {
-        String jsonData = response.body;
-        var myWeather = jsonDecode(jsonData)['weather'][0]['description'];
-        flutterToast(myWeather.toString());
-        //print(myWeather.toString());
-
-        var myWind = jsonDecode(jsonData)['wind']['speed'];
-        flutterToast(myWind.toString());
-        //print(myWind);
-
-        var myId = jsonDecode(jsonData)['id'];
-        flutterToast(myId.toString());
-        //print(myId);
-      }
-      print(response.statusCode);
-    } catch (e) {
-      flutterToast('There was a problem with the internet connection');
-    }
-    /*return Future.delayed(
-        Duration(seconds: 3), () => throw Exception('response failed'));*/
   }
 
   @override
@@ -65,7 +49,6 @@ class _LoadingState extends State<Loading> {
         child: ElevatedButton(
           onPressed: () {
             getLocation();
-            fetchData();
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,
